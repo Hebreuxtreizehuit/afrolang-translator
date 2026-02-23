@@ -1,5 +1,5 @@
-const CACHE = "tri-lang-translator-v1";
-const APP_SHELL = [
+const CACHE = "tri-lang-v1";
+const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
@@ -9,47 +9,27 @@ const APP_SHELL = [
   "./icons/icon-512.png"
 ];
 
-// Install: cache shell
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL))
+self.addEventListener("install", (e) => {
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-// Activate: clean old caches
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(k => (k === CACHE ? null : caches.delete(k))))
-    )
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.map(k => (k === CACHE ? null : caches.delete(k)))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-function isAPIRequest(url) {
-  return (
-    url.includes("translation.googleapis.com") ||
-    url.includes("/translate") ||
-    url.includes("/detect") ||
-    url.includes("wiktionary.org/api/")
-  );
-}
+self.addEventListener("fetch", (e) => {
+  const req = e.request;
+  const url = new URL(req.url);
 
-// Fetch strategy:
-// - App shell: cache-first
-// - API calls: network-only (so the app requires internet for accuracy)
-self.addEventListener("fetch", (event) => {
-  const url = event.request.url;
+  // Only handle same-origin requests (your app files)
+  if (url.origin !== location.origin) return;
 
-  if (isAPIRequest(url)) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+  e.respondWith(
+    caches.match(req).then((cached) => cached || fetch(req))
   );
 });
