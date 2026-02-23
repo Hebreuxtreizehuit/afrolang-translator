@@ -61,13 +61,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Settings modal
   const settingsBtn = document.getElementById("settingsBtn");
   const settingsModal = document.getElementById("settingsModal");
-  closeSettingsBtn?.addEventListener("click", (e) => {
+  closeSettingsBtn.addEventListener("click", (e) => {
   e.preventDefault();
+  e.stopPropagation();
   settingsModal.classList.add("hidden");
 });
 
-saveSettingsBtn?.addEventListener("click", (e) => {
+saveSettingsBtn.addEventListener("click", (e) => {
   e.preventDefault();
+  e.stopPropagation();
   saveSettings();
   settingsModal.classList.add("hidden");
 });
