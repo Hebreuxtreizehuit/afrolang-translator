@@ -61,8 +61,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // Settings modal
   const settingsBtn = document.getElementById("settingsBtn");
   const settingsModal = document.getElementById("settingsModal");
-  const closeSettingsBtn = document.getElementById("closeSettingsBtn");
-  const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+  closeSettingsBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  settingsModal.classList.add("hidden");
+});
+
+saveSettingsBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  saveSettings();
+  settingsModal.classList.add("hidden");
+});
+
   const googleKey = document.getElementById("googleKey");
   const libreEndpoint = document.getElementById("libreEndpoint");
 
