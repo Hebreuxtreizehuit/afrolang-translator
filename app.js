@@ -1,284 +1,227 @@
-/* =========================================================
-   Tri-Lang Translator — app.js (FULL, CLEAN)
-   ========================================================= */
+/* Tri-Lang Translator — app.js */
 
-/* ---------- Small helpers ---------- */
 const $ = (id) => document.getElementById(id);
 
-function safeSetText(el, text) {
-  if (el) el.textContent = text;
-}
-function safeToggle(el, cls, on) {
-  if (el) el.classList.toggle(cls, !!on);
-}
-function show(el) {
-  if (el) el.classList.remove("hidden");
-}
-function hide(el) {
-  if (el) el.classList.add("hidden");
-}
-
-/* ---------- Storage keys ---------- */
 const LS_GOOGLE = "tri_google_key";
-const LS_LIBRE = "tri_libre_endpoint";
+const LS_LIBRE  = "tri_libre_endpoint";
 
-/* =========================================================
-   PWA: Service worker
-   ========================================================= */
+function safeSetText(el, text) { if (el) el.textContent = text || ""; }
+function show(el) { if (el) el.classList.remove("hidden"); }
+function hide(el) { if (el) el.classList.add("hidden"); }
+
+// ────────────────────────────────────────────────
+// Register Service Worker
+// ────────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
-    try {
-      await navigator.serviceWorker.register("./sw.js");
-    } catch (e) {
-      console.warn("SW register failed:", e);
-    }
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .catch(err => console.warn("Service Worker registration failed:", err));
   });
 }
 
-/* =========================================================
-   Run after DOM is ready
-   ========================================================= */
+// ────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  /* ---------- PWA: Install button ---------- */
+
+  // ─── Install prompt ───
   let deferredPrompt = null;
   const installBtn = $("installBtn");
 
-  window.addEventListener("beforeinstallprompt", (e) => {
+  window.addEventListener("beforeinstallprompt", e => {
     e.preventDefault();
     deferredPrompt = e;
-    if (installBtn) installBtn.classList.remove("hidden");
+    installBtn?.classList.remove("hidden");
   });
 
-  installBtn?.addEventListener("click", async (e) => {
-    e.preventDefault();
+  installBtn?.addEventListener("click", async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    try {
-      await deferredPrompt.userChoice;
-    } catch {
-      // ignore
-    }
     deferredPrompt = null;
     installBtn.classList.add("hidden");
   });
 
-  /* ---------- Online status pill ---------- */
+  // ─── Network status indicator ───
   const netStatus = $("netStatus");
-  function updateOnlineStatus() {
+  const updateNetStatus = () => {
     const online = navigator.onLine;
     safeSetText(netStatus, online ? "Online" : "Offline");
-    safeToggle(netStatus, "online", online);
-  }
-  window.addEventListener("online", updateOnlineStatus);
-  window.addEventListener("offline", updateOnlineStatus);
-  updateOnlineStatus();
+    netStatus?.classList.toggle("online", online);
+  };
+  window.addEventListener("online", updateNetStatus);
+  window.addEventListener("offline", updateNetStatus);
+  updateNetStatus();
 
-  /* ---------- Main elements ---------- */
-  const fromLang = $("fromLang");
-  const toLang = $("toLang");
-  const swapBtn = $("swapBtn");
-  const wordInput = $("wordInput");
-
-  const translateBtn = $("translateBtn");
-  const clearBtn = $("clearBtn");
+  // ─── Translation UI elements ───
+  const fromLang       = $("fromLang");
+  const toLang         = $("toLang");
+  const swapBtn        = $("swapBtn");
+  const wordInput      = $("wordInput");
+  const translateBtn   = $("translateBtn");
+  const clearBtn       = $("clearBtn");
   const translationOut = $("translationOut");
-  const sourceOut = $("sourceOut");
-  const errorOut = $("errorOut");
-  const copyBtn = $("copyBtn");
+  const sourceOut      = $("sourceOut");
+  const errorOut       = $("errorOut");
+  const copyBtn        = $("copyBtn");
 
-  /* ---------- Error/result helpers ---------- */
   function showError(msg) {
     if (!errorOut) return;
     errorOut.textContent = msg;
-    errorOut.classList.remove("hidden");
+    show(errorOut);
   }
+
   function clearError() {
     if (!errorOut) return;
     errorOut.textContent = "";
-    errorOut.classList.add("hidden");
-  }
-  function setResult(text, source) {
-    safeSetText(translationOut, text || "—");
-    safeSetText(sourceOut, `Source: ${source || "—"}`);
-    if (copyBtn) copyBtn.disabled = !text;
+    hide(errorOut);
   }
 
-  /* ---------- Swap/Clear ---------- */
-  swapBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    if (!fromLang || !toLang) return;
-    const a = fromLang.value;
-    fromLang.value = toLang.value;
-    toLang.value = a;
+  function setResult(text = "", source = "") {
+    safeSetText(translationOut, text);
+    safeSetText(sourceOut, source ? `Source: ${source}` : "Source: —");
+    if (copyBtn) copyBtn.disabled = !text.trim();
+  }
+
+  // Swap languages
+  swapBtn?.addEventListener("click", () => {
+    [fromLang.value, toLang.value] = [toLang.value, fromLang.value];
   });
 
-  clearBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
+  // Clear input & result
+  clearBtn?.addEventListener("click", () => {
     if (wordInput) wordInput.value = "";
-    setResult("", "");
+    setResult();
     clearError();
   });
 
-  /* =========================================================
-     Settings modal (FIXED)
-     ========================================================= */
-  const settingsBtn = $("settingsBtn");
-  const settingsModal = $("settingsModal");
+  // ─── Settings Modal Logic ─────────────────────────────────────
+  const settingsBtn      = $("settingsBtn");
+  const settingsModal    = $("settingsModal");
   const closeSettingsBtn = $("closeSettingsBtn");
-  const saveSettingsBtn = $("saveSettingsBtn");
-  const googleKey = $("googleKey");
-  const libreEndpoint = $("libreEndpoint");
+  const saveSettingsBtn  = $("saveSettingsBtn");
+  const cancelSettingsBtn = $("cancelSettingsBtn");
+  const googleKeyInput   = $("googleKey");
+  const libreInput       = $("libreEndpoint");
 
   function loadSettings() {
-    if (!googleKey || !libreEndpoint) return;
-    googleKey.value = localStorage.getItem(LS_GOOGLE) || "";
-    libreEndpoint.value =
-      localStorage.getItem(LS_LIBRE) || "https://libretranslate.de";
+    if (!googleKeyInput || !libreInput) return;
+    googleKeyInput.value = localStorage.getItem(LS_GOOGLE) || "";
+    libreInput.value = localStorage.getItem(LS_LIBRE) || "https://libretranslate.de";
   }
 
-  function saveSettings() {
-    if (!googleKey || !libreEndpoint) return;
-    localStorage.setItem(LS_GOOGLE, googleKey.value.trim());
-    localStorage.setItem(
-      LS_LIBRE,
-      libreEndpoint.value.trim() || "https://libretranslate.de"
-    );
-  }
-
-  function openSettings() {
-    if (!settingsModal) return;
-    loadSettings();
-    show(settingsModal);
-  }
-
-  function closeSettings() {
-    if (!settingsModal) return;
+  function saveSettingsAndClose() {
+    if (!googleKeyInput || !libreInput) return;
+    localStorage.setItem(LS_GOOGLE, googleKeyInput.value.trim());
+    localStorage.setItem(LS_LIBRE, libreInput.value.trim() || "https://libretranslate.de");
     hide(settingsModal);
   }
 
-  settingsBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    openSettings();
+  function closeModal() {
+    hide(settingsModal);
+  }
+
+  settingsBtn?.addEventListener("click", () => {
+    loadSettings();
+    show(settingsModal);
   });
 
-  closeSettingsBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    closeSettings();
+  closeSettingsBtn?.addEventListener("click", closeModal);
+  cancelSettingsBtn?.addEventListener("click", closeModal);
+  saveSettingsBtn?.addEventListener("click", saveSettingsAndClose);
+
+  // Click outside modal to close
+  settingsModal?.addEventListener("click", e => {
+    if (e.target === settingsModal) closeModal();
   });
 
-  saveSettingsBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    saveSettings();
-    closeSettings();
-  });
-
-  // Click outside modalCard closes
-  settingsModal?.addEventListener("click", (e) => {
-    if (e.target === settingsModal) closeSettings();
-  });
-
-  // ESC closes
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && settingsModal && !settingsModal.classList.contains("hidden")) {
-      closeSettings();
+  // ESC key closes modal
+  window.addEventListener("keydown", e => {
+    if (e.key === "Escape" && !settingsModal?.classList.contains("hidden")) {
+      closeModal();
     }
   });
 
-  /* =========================================================
-     Translation functions
-     ========================================================= */
-  async function googleTranslate(word, from, to, apiKey) {
-    const url = `https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(
-      apiKey
-    )}`;
-
-    const body = { q: word, source: from, target: to, format: "text" };
-
+  // ─── Translation Handlers ─────────────────────────────────────
+  async function googleTranslate(word, from, to, key) {
+    const url = `https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(key)}`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      cache: "no-store",
+      body: JSON.stringify({ q: word, source: from, target: to, format: "text" })
     });
 
-    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data?.error?.message || `Google Translate failed (${res.status})`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `Google API error ${res.status}`);
     }
 
-    const translated = data?.data?.translations?.[0]?.translatedText;
-    if (!translated) throw new Error("Google Translate returned no text.");
-    return translated.trim();
+    const data = await res.json();
+    return data?.data?.translations?.[0]?.translatedText?.trim() || "";
   }
 
   async function libreTranslate(word, from, to, endpoint) {
-    const clean = (endpoint || "").replace(/\/+$/, "");
-    const url = `${clean}/translate`;
-
-    const res = await fetch(url, {
+    const base = (endpoint || "https://libretranslate.de").replace(/\/+$/, "");
+    const res = await fetch(`${base}/translate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ q: word, source: from, target: to, format: "text" }),
-      cache: "no-store",
+      body: JSON.stringify({ q: word, source: from, target: to, format: "text" })
     });
 
-    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data?.error || `LibreTranslate failed (${res.status})`);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || `LibreTranslate error ${res.status}`);
     }
 
-    const translated = data?.translatedText;
-    if (!translated) throw new Error("LibreTranslate returned no text.");
-    return String(translated).trim();
+    const data = await res.json();
+    return String(data?.translatedText ?? "").trim();
   }
 
-  /* ---------- Translate ---------- */
-  translateBtn?.addEventListener("click", async (e) => {
-    e.preventDefault();
+  translateBtn?.addEventListener("click", async () => {
     clearError();
 
-    const word = (wordInput?.value || "").trim().split(/\s+/)[0] || "";
+    const word = (wordInput?.value || "").trim().split(/\s+/)[0];
     if (!word) return showError("Please enter a word.");
 
-    const from = fromLang?.value || "";
-    const to = toLang?.value || "";
-    if (!from || !to) return showError("Please choose languages.");
-    if (from === to) return showError("Choose two different languages.");
+    const from = fromLang?.value;
+    const to   = toLang?.value;
 
-    setResult("…", "Working");
+    if (!from || !to) return showError("Select both languages.");
+    if (from === to) return showError("Choose different languages.");
 
-    const apiKey = (localStorage.getItem(LS_GOOGLE) || "").trim();
-    const endpoint = (localStorage.getItem(LS_LIBRE) || "https://libretranslate.de").trim();
+    setResult("…", "Translating…");
+
+    const googleKey = (localStorage.getItem(LS_GOOGLE) || "").trim();
+    const libreUrl  = localStorage.getItem(LS_LIBRE) || "https://libretranslate.de";
 
     try {
-      let translated, source;
-      if (apiKey) {
-        translated = await googleTranslate(word, from, to, apiKey);
-        source = "Google Translate API";
+      let result, source;
+
+      if (googleKey) {
+        result = await googleTranslate(word, from, to, googleKey);
+        source = "Google Translate";
       } else {
-        translated = await libreTranslate(word, from, to, endpoint);
-        source = `LibreTranslate (${endpoint})`;
+        result = await libreTranslate(word, from, to, libreUrl);
+        source = "LibreTranslate";
       }
-      setResult(translated, source);
+
+      setResult(result, source);
     } catch (err) {
       setResult("", "");
-      showError(err?.message || "Translation failed.");
+      showError(err.message || "Translation failed. Check API key / endpoint.");
     }
   });
 
-  /* ---------- Copy ---------- */
-  copyBtn?.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const t = (translationOut?.textContent || "").trim();
-    if (!t || t === "—") return;
+  // Copy translation to clipboard
+  copyBtn?.addEventListener("click", async () => {
+    const text = translationOut?.textContent?.trim();
+    if (!text || text === "—") return;
 
     try {
-      await navigator.clipboard.writeText(t);
-    } catch {
-      // ignore
+      await navigator.clipboard.writeText(text);
+      // You could add visual feedback here (e.g. button text → "Copied!")
+    } catch (err) {
+      console.warn("Copy failed:", err);
     }
   });
 
-  /* ---------- Initial state ---------- */
-  setResult("", "");
+  // Initial UI state
+  setResult();
 });
