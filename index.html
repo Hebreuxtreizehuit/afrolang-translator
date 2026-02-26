@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0b0f14" />
   <title>Tri-Lang Translator</title>
 
@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-
   <header class="topbar">
     <div class="brand">
       <div class="logo-dot" aria-hidden="true"></div>
@@ -34,7 +33,7 @@
       <h2>Translate a single word</h2>
 
       <div class="row">
-        <div class="field">
+        <div class="col">
           <label for="fromLang">From</label>
           <select id="fromLang">
             <option value="en" selected>English</option>
@@ -45,7 +44,7 @@
 
         <button id="swapBtn" class="swap" type="button" aria-label="Swap languages">⇄</button>
 
-        <div class="field">
+        <div class="col">
           <label for="toLang">To</label>
           <select id="toLang">
             <option value="en">English</option>
@@ -55,29 +54,25 @@
         </div>
       </div>
 
-      <div class="field">
-        <label for="wordInput">Word (one only)</label>
-        <input id="wordInput" type="text" placeholder="e.g., justice / bonjour / rafiki" autocomplete="off" />
-        <div class="hint">Tip: only the first token is used (spaces are trimmed).</div>
-      </div>
+      <label for="wordInput">Word (one only)</label>
+      <input id="wordInput" type="text" placeholder="e.g., justice / bonjour / rafiki" autocomplete="off" />
+
+      <div class="hint">Tip: only the first token is used (spaces are trimmed).</div>
 
       <div class="actions">
         <button id="translateBtn" class="primary" type="button">Translate</button>
-        <button id="clearBtn" class="ghost" type="button">Clear</button>
+        <button id="clearBtn" class="secondary" type="button">Clear</button>
       </div>
 
-      <div class="result">
-        <div class="resultHead">
-          <div class="resultTitle">Translation</div>
-          <div class="resultButtons">
-            <button id="copyBtn" class="ghost" type="button" disabled>Copy</button>
-            <button id="detailsBtn" class="ghost" type="button" disabled>Get linguistic details</button>
-          </div>
-        </div>
+      <div id="errorOut" class="error hidden"></div>
 
-        <div id="translationOut" class="translation">—</div>
+      <div class="result">
+        <div class="resultHead">Translation</div>
+        <div id="translationOut" class="resultText">—</div>
+        <div class="resultActions">
+          <button id="copyBtn" class="secondary" type="button" disabled>Copy</button>
+        </div>
         <div id="sourceOut" class="source">Source: —</div>
-        <div id="errorOut" class="error hidden"></div>
       </div>
     </section>
 
@@ -86,29 +81,28 @@
     </footer>
   </main>
 
-  <!-- Settings Modal -->
+  <!-- SETTINGS MODAL -->
   <section id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Settings">
-    <div class="modalCard">
+    <div class="modalCard" role="document">
       <div class="modalHeader">
         <h2>Settings</h2>
-        <button id="closeSettingsBtn" class="ghost" type="button">×</button>
+        <button id="closeSettingsBtn" class="ghost" type="button">Close</button>
       </div>
 
       <div class="field">
         <label for="googleKey">Google Translate API key (recommended)</label>
-        <input id="googleKey" type="password" placeholder="Paste your Google API key here" autocomplete="off" />
-        <div class="hint">Stored locally (localStorage). Personal use only.</div>
+        <input id="googleKey" type="password" placeholder="Paste your Google API key here" />
+        <div class="hint">Stored locally on this device (localStorage). For personal use only.</div>
       </div>
 
       <div class="field">
         <label for="libreEndpoint">LibreTranslate endpoint (fallback)</label>
-        <input id="libreEndpoint" type="text" value="https://libretranslate.de" autocomplete="off" />
-        <div class="hint">Must support CORS. Default: https://libretranslate.de</div>
+        <input id="libreEndpoint" type="text" value="https://libretranslate.de" />
+        <div class="hint">Example: https://libretranslate.de (must allow CORS).</div>
       </div>
 
-      <div class="actions modal-actions">
-        <button id="saveSettingsBtn" class="primary" type="button">Save & Close</button>
-        <button id="cancelSettingsBtn" class="ghost" type="button">Cancel</button>
+      <div class="modalActions">
+        <button id="saveSettingsBtn" class="primary" type="button">Save</button>
       </div>
     </div>
   </section>
