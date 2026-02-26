@@ -1,6 +1,7 @@
 {
-  "name": "Tri-Lang Translator",
-  "short_name": "Translator",
+  "name": "AfroLang Translator",
+  "short_name": "AfroLang",
+  "description": "AfroLang Translator — fast word translations (online only).",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

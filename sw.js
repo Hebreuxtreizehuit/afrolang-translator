@@ -1,4 +1,4 @@
-const CACHE_NAME = "tri-lang-v1";
+const CACHE_NAME = "afrolang-translator-v1";
 const ASSETS = [
   "./",
   "./index.html",
